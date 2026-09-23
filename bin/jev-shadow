@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Hook and CLI entry. Plugin installs copy the repo as-is, so dist/ is committed on release tags.
-import { main, nodeIo } from "../dist/cli.js";
-import { claude } from "../dist/hosts/claude.js";
+import { main, nodeIo } from "../dist/src/cli.js";
+import { claude } from "../dist/src/hosts/claude.js";
 
 process.exitCode = await main(process.argv.slice(2), nodeIo(), claude);

@@ -68,8 +68,8 @@ Modes, as the README states them:
 
 ```js
 #!/usr/bin/env node
-import { main, nodeIo } from "../dist/cli.js";
-import { claude } from "../dist/hosts/claude.js";
+import { main, nodeIo } from "../dist/src/cli.js";
+import { claude } from "../dist/src/hosts/claude.js";
 
 process.exitCode = await main(process.argv.slice(2), nodeIo(), claude);
 ```
@@ -221,6 +221,7 @@ Kept as candidate 1 had it, and flagged for the user: enforce yields to auto mod
 - `test/rules.test.ts`: the sketch built each case through `claude.parse(preBash(...))`. The adapter is unit 6 and each unit must be green on its own, so the table builds `Action` and `EventContext` directly and tests `triage` alone. `test/hook.test.ts` covers the adapter path.
 - `read.sed` also forbids `-f` / `--file`: a script file cannot be scanned for `w` / `e`, so it is judged. The sketch's `sed_no_write_exec` check reads `-e` values and the first positional; a `-f` script would have passed unseen.
 - `Miss.unlisted.argv0`: the sketch typed it `string` and the design says rules emit no text, but the head token of `GITHUB_TOKEN=github_pat_... gh pr list` or `fetch('https://x?key=AIza...')` is the head token, and it was logged verbatim. Five leak-corpus entries failed end to end through `main` (the pattern table passed them; the log's `jev.miss.argv0` carried the value). `argv0` is now a command word (`terraform`), an assignment name (`GITHUB_TOKEN=`), or `<non-word>`. The type is unchanged; the value is constrained where it is produced.
+- `bin/jev-shadow` imports `../dist/src/cli.js`, not `../dist/cli.js`. `tsconfig.json` sets `rootDir: "."` so `test/` compiles next to `src/`, which puts the sources under `dist/src/`. The sketch's bin path assumed `dist/cli.js`. Unit tests could not see this (they import through `dist/src` themselves); the end-to-end run of the real bin did. The call site in the design (call site 1) is updated with the same paths.
 - `test/egress.test.ts`: the design says the corpus's token straddle leaks under truncate-then-redact. That holds for the `ghp_` case only. The PEM straddle does not leak under either order, because `pem` redacts an unterminated block to the end of the text (`|$`), so a block cut before its END marker is still covered. The test asserts each case's real property instead of one claim over both.
 
 ## Open questions and risks
