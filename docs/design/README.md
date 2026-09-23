@@ -234,7 +234,7 @@ Kept as candidate 1 had it, and flagged for the user: enforce yields to auto mod
 - Script contents (`local_scripts_run`) can steer Jev. Since Jev can never grant, the worst case is a missed deny. Is that acceptable for enforce, or should enforce drop scripts?
 - In `-p` runs, async observers are killed at teardown, so late attempts go unlabeled. The report counts them. Is that population large enough to bias agreement?
 - The log grows without bound. v0.1 has no rotation. Is `jev-shadow report --since` plus manual deletion enough?
-- `dist/` must be committed on release tags, because plugin installs do not build. Is a release branch acceptable, or should CI commit `dist/`?
+- Resolved: `dist/src` is committed on main, because a marketplace install copies the repo and runs no build (verified by installing from GitHub and finding no `dist/`). CI rebuilds and fails on a diff, so it cannot go stale silently. `dist/test` stays ignored.
 
 ## Next implementation step
 
