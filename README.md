@@ -4,6 +4,39 @@ A Claude Code plugin that asks TypeSafe Jev the same five hazard questions about
 
 The research behind it (`docs/research/README.md`) found that for auto-mode users there is nothing to gate: the classifier already checks these hazards, and a hook `ask` would only force prompts auto mode skipped. So for those users jev-shadow measures, it does not gate. No independent calibration data for Jev on real coding actions exists, and this log is meant to produce it. The `enforce` mode exists for sessions without a classifier (Manual mode, `dontAsk`, and the v0.2 Codex adapter), and it yields to auto mode automatically.
 
+## How it works
+
+One tool call, three hook events, one log line each. The report joins them later by `tool_use_id`.
+
+```mermaid
+flowchart TB
+    call["Claude wants to run a tool<br/>(Bash, Write, Edit, WebFetch, MCP)"]
+    call --> cc["Claude Code fires PreToolUse"]
+    cc --> gate["sync hook: gate<br/>exits at once unless mode is enforce"]
+    cc --> obs["async hook: observer<br/>runs in the background, cannot print"]
+    cc --> clf["auto-mode classifier<br/>(Anthropic, built in)"]
+
+    obs --> rules{"local rule table<br/>read-only command? project test? in-project edit?"}
+    rules -- "routine" --> never["never leaves the machine<br/>logged as decided by rule"]
+    rules -- "anything else" --> redact["redact secrets, then clip"]
+    redact --> jev["Jev: five hazard questions<br/>destructive, exfiltration, remote_code,<br/>weakens_security, outside_project"]
+    jev --> verdict["probabilities + risk score<br/>logged as what enforce would have done"]
+
+    clf -- "denied" --> denied["PermissionDenied<br/>logged with the classifier's rule label"]
+    clf -- "allowed, tool ran" --> ran["PostToolUse<br/>logged as ran"]
+
+    never --> log[("log.jsonl")]
+    verdict --> log
+    denied --> log
+    ran --> log
+    log --> report["jev-shadow report<br/>per hazard: Jev >= 0.8 vs classifier denial,<br/>over-refusals, band accuracy, latency, tokens"]
+
+    gate -. "enforce mode, no classifier" .-> rules
+    verdict -. "enforce mode only" .-> decide["print ask or deny<br/>(allow prints nothing)"]
+```
+
+In `shadow` mode only the observer does work, and it has no way to write to Claude's stdout, so the session is unchanged whatever Jev answers. In `enforce` mode the gate takes the same path synchronously and prints a decision, which Claude Code applies before the tool runs. In an auto-mode session the gate stands down and observes, because the classifier already gates.
+
 ## Install
 
 ```sh
