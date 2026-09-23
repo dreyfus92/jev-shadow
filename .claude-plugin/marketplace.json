@@ -1,0 +1,13 @@
+{
+  "name": "jev-shadow",
+  "owner": { "name": "Paul Valladares" },
+  "plugins": [
+    {
+      "name": "jev-shadow",
+      "source": "./",
+      "description": "Logs TypeSafe Jev's typed hazard verdicts next to auto mode's classifier denials, at zero latency. Can gate tool calls for sessions without a classifier.",
+      "version": "0.1.0",
+      "defaultEnabled": false
+    }
+  ]
+}
