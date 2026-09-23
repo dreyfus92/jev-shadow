@@ -16,8 +16,12 @@ import type {
   Basis, Effect, HostId, PermissionMode, Posture, SessionId, ToolName, ToolUseId, AbsPath, Ms,
 } from "./core.js";
 import type { Redacted } from "./egress.js";
-import type { BackendId, Hazard, JevError, PACK_VERSION } from "./jev.js";
+import type { BackendId, Hazard, JevError } from "./jev.js";
+import { PACK_VERSION } from "./jev.js";
 import type { Miss, RuleId } from "./rules.js";
+import type { Attempt, Assessment, Decision, HookEvent } from "./core.js";
+import { CLIP, clip, excerpt, redact } from "./egress.js";
+import { HAZARDS } from "./jev.js";
 
 interface RecordBase {
   readonly v: 1;
@@ -87,12 +91,17 @@ export type LogRecord = AttemptRecord | DeniedRecord | RanRecord;
 
 /** The log path under a host-provided data dir. */
 export function logPath(dataDir: AbsPath): AbsPath {
-  throw new Error("not implemented");
+  return `${dataDir.replace(/\/$/, "")}/log.jsonl` as AbsPath;
 }
 
 /** Serialize one record to one line, "\n"-terminated. Throws in tests if the line exceeds 4000 bytes. */
+export const LINE_BYTES_MAX = 4000;
+
 export function encode(record: LogRecord): string {
-  throw new Error("not implemented");
+  const line = `${JSON.stringify(record)}\n`;
+  const bytes = Buffer.byteLength(line);
+  if (bytes > LINE_BYTES_MAX) throw new Error(`log line is ${bytes} bytes, over the ${LINE_BYTES_MAX} byte bound`);
+  return line;
 }
 
 /**
@@ -100,24 +109,115 @@ export function encode(record: LogRecord): string {
  * must not hide the rest of the evidence. Unknown `v` counts as malformed.
  */
 export function decode(text: string): { readonly records: readonly LogRecord[]; readonly malformed: number } {
-  throw new Error("not implemented");
+  const records: LogRecord[] = [];
+  let malformed = 0;
+  for (const line of text.split("\n")) {
+    if (line.trim() === "") continue;
+    const record = parseLine(line);
+    if (record) records.push(record); else malformed++;
+  }
+  return { records, malformed };
+}
+
+function parseLine(line: string): LogRecord | null {
+  let value: unknown;
+  try { value = JSON.parse(line); } catch { return null; }
+  if (!isRecord(value) || value["v"] !== 1) return null;
+  const base = {
+    at: value["at"], host: value["host"], session: value["session"], toolUseId: value["toolUseId"], tool: value["tool"], agentId: value["agentId"],
+  };
+  if (!isString(base.at) || !(base.host === "claude-code" || base.host === "codex") || !isString(base.session) || !isString(base.toolUseId) || !isString(base.tool)) return null;
+  if (!(base.agentId === null || isString(base.agentId))) return null;
+  switch (value["kind"]) {
+    case "attempt": {
+      const jev = value["jev"];
+      const basis = value["basis"];
+      if (!isOneOf(value["permissionMode"], PERMISSION_MODES) || !isOneOf(value["posture"], ["observe", "gate"]) || !isOneOf(value["effect"], EFFECTS)) return null;
+      if (!isRecord(basis) || !isString(basis["kind"]) || !isJevField(jev) || !isString(value["excerpt"]) || !isNumber(value["wallMs"])) return null;
+      return value as unknown as AttemptRecord;
+    }
+    case "denied": {
+      const label = value["label"];
+      if (!isRecord(label) || !isOneOf(label["kind"], ["rule", "no_verdict", "unavailable", "other"])) return null;
+      if (label["kind"] === "rule" && !isString(label["label"])) return null;
+      if (label["kind"] === "other" && !isString(label["text"])) return null;
+      return value as unknown as DeniedRecord;
+    }
+    case "ran":
+      return typeof value["ok"] === "boolean" ? (value as unknown as RanRecord) : null;
+    default:
+      return null;
+  }
+}
+
+const PERMISSION_MODES: readonly PermissionMode[] = ["default", "plan", "acceptEdits", "auto", "dontAsk", "bypassPermissions", "unknown"];
+const EFFECTS: readonly Effect[] = ["allow", "ask", "deny"];
+
+function isJevField(v: unknown): v is JevField {
+  if (!isRecord(v)) return false;
+  if (v["kind"] === "not_asked") return isString(v["rule"]);
+  if (v["kind"] !== "verdict" && v["kind"] !== "failed") return false;
+  if (!isRecord(v["miss"]) || !isString(v["backend"]) || !isNumber(v["latencyMs"]) || !isString(v["fingerprint"])) return false;
+  if (v["kind"] === "failed") return isRecord(v["error"]) && isString(v["error"]["kind"]);
+  const hazards = v["hazards"];
+  const usage = v["usage"];
+  return isString(v["model"]) && isNumber(v["risk"]) && isRecord(hazards) && HAZARDS.every((h) => isNumber(hazards[h]))
+    && isRecord(usage) && isNumber(usage["input"]) && isNumber(usage["output"]);
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+function isString(v: unknown): v is string {
+  return typeof v === "string";
+}
+function isNumber(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v);
+}
+function isOneOf<T extends string>(v: unknown, options: readonly T[]): v is T {
+  return isString(v) && (options as readonly string[]).includes(v);
 }
 
 /** The one constructor for attempt records. Excerpt comes from egress.ts, so it is redacted by type. */
 export function attemptRecord(
-  attempt: import("./core.js").Attempt,
-  assessment: import("./core.js").Assessment,
-  decision: import("./core.js").Decision,
+  attempt: Attempt,
+  assessment: Assessment,
+  decision: Decision,
   meta: { readonly at: string; readonly posture: Posture; readonly backend: BackendId; readonly wallMs: Ms },
 ): AttemptRecord {
-  throw new Error("not implemented");
+  return {
+    ...base(attempt, meta.at),
+    kind: "attempt",
+    permissionMode: attempt.ctx.permissionMode,
+    posture: meta.posture,
+    effect: decision.effect,
+    basis: decision.basis,
+    jev: jevField(assessment, meta.backend),
+    excerpt: excerpt(attempt.action),
+    wallMs: meta.wallMs,
+  };
+}
+
+function jevField(assessment: Assessment, backend: BackendId): JevField {
+  if (assessment.kind === "routine") return { kind: "not_asked", rule: assessment.rule };
+  const { miss, jev, fingerprint } = assessment;
+  if (jev.kind === "failed") return { kind: "failed", miss, backend, error: jev.error, latencyMs: jev.latencyMs, fingerprint };
+  const { verdict } = jev;
+  return {
+    kind: "verdict", miss, backend, pack: PACK_VERSION, model: verdict.model,
+    hazards: verdict.hazards, risk: verdict.risk, usage: verdict.usage, latencyMs: jev.latencyMs, fingerprint,
+  };
+}
+
+function base(event: HookEvent, at: string): RecordBase {
+  const { ctx } = event;
+  return { v: 1, at, host: ctx.host, session: ctx.session, toolUseId: ctx.toolUseId, tool: ctx.tool, agentId: ctx.agentId };
 }
 
 /** Denied and ran records carry no Jev data and no input. */
-export function labelRecord(
-  event: Exclude<import("./core.js").HookEvent, { kind: "attempt" }>,
-  at: string,
-): DeniedRecord | RanRecord {
-  // TODO denied "other" reason text goes through redact() before it is stored
-  throw new Error("not implemented");
+export function labelRecord(event: Exclude<HookEvent, { kind: "attempt" }>, at: string): DeniedRecord | RanRecord {
+  if (event.kind === "ran") return { ...base(event, at), kind: "ran", ok: event.ok };
+  const { reason } = event;
+  const label: DeniedRecord["label"] = reason.kind === "other" ? { kind: "other", text: clip(redact(reason.text), CLIP.excerpt) } : reason;
+  return { ...base(event, at), kind: "denied", label };
 }
