@@ -1,8 +1,18 @@
 # jev-shadow
 
-A Claude Code plugin that asks TypeSafe Jev the same five hazard questions about every tool call the auto-mode classifier reviews, and writes Jev's answer next to what the classifier decided. It runs in the background, adds no latency to the call, and changes nothing about the session. The output is a local JSONL log and a report that says, per hazard, how often Jev at or above 0.8 agrees with a classifier denial, how often Jev flags a call the classifier let run, and what each call cost in time and tokens.
+## What this is for
 
-The research behind it (`docs/research/README.md`) found that for auto-mode users there is nothing to gate: the classifier already checks these hazards, and a hook `ask` would only force prompts auto mode skipped. So for those users jev-shadow measures, it does not gate. No independent calibration data for Jev on real coding actions exists, and this log is meant to produce it. The `enforce` mode exists for sessions without a classifier (Manual mode, `dontAsk`, and the v0.2 Codex adapter), and it yields to auto mode automatically.
+TypeSafe's Jev is a new kind of model. Give it a piece of text and a few typed questions, and in about 200 ms it returns a probability for each answer instead of prose. One obvious use is judging whether a coding agent's next shell command or file edit is dangerous before it runs. Nobody has measured how well Jev does that on real coding sessions. jev-shadow measures it.
+
+It is a Claude Code plugin. While you work, it asks Jev five questions about every command and edit Claude proposes: will this destroy data, leak data, run code fetched from the network, weaken security, or touch files outside the project. It writes Jev's answers next to what Claude Code's own safety classifier decided about the same call. It runs in the background, adds no delay, and cannot change what Claude does. After a few days you run one command and get a report: per hazard, how often Jev agreed with the classifier, how often it would have blocked something the classifier let through, and what each call cost in time and tokens.
+
+Who it is for:
+
+- You use Claude Code in auto mode and want to know whether Jev is worth trusting before wiring it into anything. You get calibration data from your own sessions, and nothing changes while it collects.
+- You run Claude Code without the built-in classifier (Manual mode, `dontAsk`), or another agent once the v0.2 adapters land (Codex, pi). `enforce` mode turns the same five questions into allow, ask, or deny before the tool runs.
+- You are building on Jev and want a tested redaction layer, a rule table for routine commands, and a hook harness that fails safe.
+
+What it is not: a replacement for Claude Code's classifier, or a way to make Claude Code faster or cheaper. The research that led here is in `docs/research/README.md`; its short version is that for auto-mode users there is nothing to gate yet, only something to measure.
 
 ## How it works
 
