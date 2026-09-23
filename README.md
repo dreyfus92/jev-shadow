@@ -20,6 +20,15 @@ cd ~/Documents/your/project
 claude plugin enable jev-shadow@jev-shadow --scope local
 ```
 
+To try a checkout without installing it, point Claude Code at the directory and enable it for that run. `--plugin-dir` alone is not enough: the plugin ships with `defaultEnabled: false`, so its hooks stay unregistered until an `enabledPlugins` entry says otherwise, and a `--plugin-dir` plugin's id is `jev-shadow@inline`.
+
+```sh
+pnpm install && pnpm build
+claude --plugin-dir /path/to/jev-shadow --settings '{"enabledPlugins":{"jev-shadow@inline":true}}'
+```
+
+The log for that run lands in `~/.claude/plugins/data/jev-shadow-inline/log.jsonl`.
+
 Nothing leaves the machine until a config file exists. Create it with:
 
 ```sh
@@ -42,7 +51,7 @@ This writes `~/.config/jev-shadow/config.json` (or `$JEV_SHADOW_CONFIG`). The fi
 ## Modes
 
 - `off` sends nothing and logs nothing. It is the kill switch and takes effect on the next tool call in every running session.
-- `shadow` asks Jev from a background hook, logs the verdict next to the classifier's decision, and changes nothing. The synchronous hook still spawns a `node` process per matched call that exits before reading stdin, about 20 to 30 ms.
+- `shadow` asks Jev from a background hook, logs the verdict next to the classifier's decision, and changes nothing. The synchronous hook still spawns a `node` process per matched call that exits before reading stdin. Measured on an M-series Mac: p50 50 ms per spawn, of which bare `node -e 0` is 39 ms, so the plugin's own cost is about 15 ms.
 - `enforce` runs a synchronous gate that prints `ask` or `deny`, or nothing for allow. In an auto-mode session it behaves as `shadow`. `policy.onError` (default `allow`) decides what a failed Jev call becomes. In `dontAsk` mode and in `claude -p` without a permission prompt tool, `ask` is a hard deny. A hook that reaches its timeout always fails open, whatever `onError` says.
 
 `JEV_SHADOW_MODE` in the environment may lower the mode but never raise it. A missing or invalid config file means `off`.
