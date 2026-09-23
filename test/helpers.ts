@@ -3,7 +3,9 @@ import type { Io } from "../src/cli.js";
 import type { AbsPath } from "../src/core.js";
 import type { LogRecord } from "../src/log.js";
 import type { Config } from "../src/config.js";
-import type { MockFixture } from "../src/jev.js";
+import { mockFetch, type MockFixture } from "../src/jev.js";
+import { DEFAULTS } from "../src/config.js";
+import { decode } from "../src/log.js";
 
 /** In-memory Io: stdin from a fixture file, config as an object, fetch = mockFetch(fixtures, seen). */
 export interface FakeIo extends Io {
@@ -21,7 +23,32 @@ export function fakeIo(opts: {
   jev?: readonly MockFixture[];
   env?: Record<string, string>;
 }): FakeIo {
-  throw new Error("not implemented");
+  const files = new Map<string, string>();
+  const seen: string[] = [];
+  const out: string[] = [];
+  const err: string[] = [];
+  const configPath = "/config.json";
+  const dataDir = "/data" as AbsPath;
+  const logFile = `${dataDir}/log.jsonl`;
+  files.set(configPath, JSON.stringify(opts.config.mode === "off" ? { mode: "off" } : { ...DEFAULTS, ...opts.config }));
+  const startedAt = performance.timeOrigin + performance.now();
+  return {
+    env: { JEV_SHADOW_CONFIG: configPath, CLAUDE_PLUGIN_OPTION_JEV_API_KEY: "test-key", ...opts.env },
+    startedAt,
+    now: () => performance.timeOrigin + performance.now(),
+    readStdin: async () => opts.stdin,
+    readText: (path) => files.get(path),
+    appendLine: (path, line) => { files.set(path, `${files.get(path) ?? ""}${line}`); },
+    replaceText: (path, text) => { files.set(path, text); },
+    fetch: mockFetch(opts.jev ?? [], seen),
+    stdout: (text) => { out.push(text); },
+    stderr: (text) => { err.push(text); },
+    dataDir,
+    stdoutText: () => out.join(""),
+    logText: () => files.get(logFile) ?? "",
+    logRecords: () => decode(files.get(logFile) ?? "").records,
+    requests: () => seen,
+  };
 }
 
 /** Reads test/fixtures/<rel> as text. Claude fixtures are real stdin captured from 2.1.280. */
