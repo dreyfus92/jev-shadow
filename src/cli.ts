@@ -164,7 +164,7 @@ async function judge(io: ObserverIo, host: HostAdapter, config: ActiveConfig, ev
   });
   const decision = decide(assessment, config.policy);
   const at = new Date(io.now()).toISOString();
-  const wallMs = (io.now() - io.startedAt) as Ms;
+  const wallMs = Math.round(io.now() - io.startedAt) as Ms;
   io.appendLine(logPath(dataDir), encode(attemptRecord(event, assessment, decision, { at, posture, backend: backend.id, wallMs })));
   return decision;
 }

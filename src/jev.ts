@@ -245,7 +245,8 @@ export function mockFetch(fixtures: readonly MockFixture[], seen?: string[]): Fe
  */
 export async function ask(state: JevState, backend: Backend, deadline: Deadline, now: () => number): Promise<JevOutcome> {
   const t0 = now();
-  const failed = (error: JevError): JevOutcome => ({ kind: "failed", error, latencyMs: (now() - t0) as Ms });
+  const elapsed = (): Ms => Math.round(now() - t0) as Ms;
+  const failed = (error: JevError): JevOutcome => ({ kind: "failed", error, latencyMs: elapsed() });
   if (backend.key === null && backend.id !== "mock") return failed({ kind: "no_key" });
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (backend.key !== null) headers["authorization"] = `Bearer ${backend.key.reveal()}`;
@@ -260,7 +261,7 @@ export async function ask(state: JevState, backend: Backend, deadline: Deadline,
     if (!res.ok) return failed({ kind: "http", status: res.status });
     const parsed = parseResponse(await res.json());
     return parsed.ok
-      ? { kind: "verdict", verdict: parsed.value, latencyMs: (now() - t0) as Ms }
+      ? { kind: "verdict", verdict: parsed.value, latencyMs: elapsed() }
       : failed({ kind: "malformed", at: parsed.at });
   } catch (e) {
     if (isAbort(e)) return failed({ kind: "deadline", budgetMs: deadline.budget });
