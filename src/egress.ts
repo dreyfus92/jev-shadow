@@ -15,6 +15,7 @@
  * Why the order matters (jev-axi safety.ts:216,226): cutting a PEM block before redaction drops
  * its END marker, the block regex no longer matches, and the key body ships.
  */
+import { createHash } from "node:crypto";
 import type { Action, EventContext } from "./core.js";
 
 declare const rawBrand: unique symbol;
@@ -24,7 +25,7 @@ export type Redacted = string & { readonly [redactedBrand]: true };
 
 /** Host boundary only. Wraps text exactly as the host sent it. */
 export function fromHost(text: string): Raw {
-  throw new Error("not implemented");
+  return text as Raw;
 }
 
 // ------------------------------------------------------------------ pattern table
@@ -83,13 +84,23 @@ export const REDACTED_MARK = "[redacted]";
  * redact(fromHost(redact(x))) === redact(x), asserted over the corpus.
  */
 export function redact(text: Raw): Redacted {
-  // TODO
-  // let out: string = text
-  // for (const p of PATTERNS) out = out.replace(p.re, (m, keep?, secret?) =>
-  //   secret === undefined ? REDACTED_MARK                 // pem: whole match
-  //   : isReference(secret) ? m : keep + REDACTED_MARK)
-  // return out as Redacted                                 // the one sanctioned cast
-  throw new Error("not implemented");
+  let out: string = text;
+  for (const p of PATTERNS) {
+    out = out.replace(p.re, (...args: unknown[]) => {
+      const m = String(args[0]);
+      const groups = args.slice(1, -2);
+      const keep = groups[0];
+      const secret = groups[1];
+      if (typeof secret !== "string" || typeof keep !== "string") return REDACTED_MARK;
+      return isReference(secret) || secret.includes(REDACTED_MARK) ? m : keep + REDACTED_MARK;
+    });
+  }
+  return out as Redacted;
+}
+
+/** `$TOKEN`, `${TOKEN}`, `$(pass show x)`, `%TOKEN%`, `{{ secret }}`, `<placeholder>`. */
+function isReference(value: string): boolean {
+  return /^(?:\$|%|\{\{|<)/.test(value);
 }
 
 /**
@@ -97,7 +108,13 @@ export function redact(text: Raw): Redacted {
  * pair or a `[redacted]` marker, and appends "…(+N chars)" so Jev knows it saw a prefix.
  */
 export function clip(text: Redacted, max: number): Redacted {
-  throw new Error("not implemented");
+  if (text.length <= max) return text;
+  let cut = max;
+  const mark = text.lastIndexOf(REDACTED_MARK, cut - 1);
+  if (mark >= 0 && mark + REDACTED_MARK.length > cut) cut = mark;
+  const last = text.charCodeAt(cut - 1);
+  if (last >= 0xd800 && last <= 0xdbff) cut -= 1;
+  return `${text.slice(0, cut)}…(+${text.length - cut} chars)` as Redacted;
 }
 
 // ------------------------------------------------------------------ what Jev sees
@@ -132,25 +149,71 @@ export type JevState =
 
 /** redact, then clip, per field. The only producer of JevState. */
 export function toJevState(action: Action, ctx: EventContext, scripts: ReadonlyMap<string, Raw>): JevState {
-  // TODO
-  // shell  -> { command: clip(redact(action.command), CLIP.command),
-  //             local_scripts_run: first CLIP.maxScripts of scripts, each clip(redact(s), CLIP.script) }
-  // write  -> { file_path: clip(redact(fromHost(path))), content_excerpt: clip(redact(content), CLIP.content) }
-  // fetch  -> { url, prompt }            mcp -> { mcp_server, input }            other -> { input }
-  throw new Error("not implemented");
+  const tool = ctx.tool;
+  const cwd = clip(redact(fromHost(ctx.cwd)), CLIP.url);
+  switch (action.kind) {
+    case "shell": {
+      const command = clip(redact(action.command), CLIP.command);
+      const local_scripts_run: Record<string, Redacted> = {};
+      for (const [path, content] of [...scripts].slice(0, CLIP.maxScripts)) {
+        local_scripts_run[redact(fromHost(path))] = clip(redact(content), CLIP.script);
+      }
+      return Object.keys(local_scripts_run).length > 0 ? { tool, cwd, command, local_scripts_run } : { tool, cwd, command };
+    }
+    case "write":
+      return {
+        tool, cwd,
+        file_path: clip(redact(fromHost(action.path)), CLIP.url),
+        content_excerpt: clip(redact(action.content), CLIP.content),
+      };
+    case "fetch":
+      return { tool, cwd, url: clip(redact(action.url), CLIP.url), prompt: clip(redact(action.prompt), CLIP.fetchPrompt) };
+    case "mcp":
+      return { tool, cwd, mcp_server: action.server, input: clip(redact(action.input), CLIP.mcpInput) };
+    case "other":
+      return { tool, cwd, input: clip(redact(action.input), CLIP.mcpInput) };
+  }
 }
+
+const SCRIPT_RUN =
+  /(?:^|[\s;&|(])(?:(?:bash|sh|zsh|python3?|node|ruby|perl|deno run|bun run|tsx)\s+)?((?:\.{1,2}\/|\/)?[\w./-]+\.(?:sh|bash|py|js|mjs|cjs|ts|rb|pl))\b|(?:^|[\s;&|(])(\.\/[\w./-]+)/g;
 
 /** Relative paths of in-project scripts a shell command runs (`./x.sh`, `bash scripts/y.sh`). */
 export function scriptRefs(action: Action): readonly string[] {
-  throw new Error("not implemented");
+  if (action.kind !== "shell" || action.dialect !== "posix") return [];
+  const refs = new Set<string>();
+  for (const m of action.command.matchAll(SCRIPT_RUN)) {
+    const path = m[1] ?? m[2];
+    if (path) refs.add(path);
+  }
+  return [...refs];
 }
 
 /** One-line redacted summary for the log. Never the full input. */
 export function excerpt(action: Action): Redacted {
-  throw new Error("not implemented");
+  const parts: Raw[] = (() => {
+    switch (action.kind) {
+      case "shell": return [action.command];
+      case "write": return [fromHost(action.path), action.content];
+      case "fetch": return [action.url, action.prompt];
+      case "mcp": return [fromHost(action.server), action.input];
+      case "other": return [action.input];
+    }
+  })();
+  const line = parts.map((p) => redact(p)).join(" ").replace(/\s+/g, " ").trim() as Redacted;
+  return clip(line, CLIP.excerpt);
 }
 
 /** sha256 hex of the canonical JSON of a redacted state. Hashing raw text could leak a short secret by dictionary. */
 export function fingerprint(state: JevState): string {
-  throw new Error("not implemented");
+  return createHash("sha256").update(canonical(state)).digest("hex");
+}
+
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
 }

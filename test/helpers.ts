@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { Io } from "../src/cli.js";
 import type { AbsPath } from "../src/core.js";
 import type { LogRecord } from "../src/log.js";
@@ -25,17 +26,20 @@ export function fakeIo(opts: {
 
 /** Reads test/fixtures/<rel> as text. Claude fixtures are real stdin captured from 2.1.280. */
 export function fixture(rel: string): string {
-  throw new Error("not implemented");
+  return readFileSync(new URL(`../../test/fixtures/${rel}`, import.meta.url), "utf8");
 }
 
 /** A real PreToolUse stdin fixture with `tool_input.command` replaced. */
 export function preBash(command: string, overrides?: { permission_mode?: string }): string {
-  throw new Error("not implemented");
+  const wire = JSON.parse(fixture("claude/pre-tool-use.bash.rm-home.json")) as Record<string, unknown>;
+  return JSON.stringify({ ...wire, ...overrides, tool_input: { command } });
 }
 
 /** True when any 8-char window of `secret` appears in `text`. */
 export function leaks(text: string, secret: string): boolean {
-  throw new Error("not implemented");
+  if (secret.length < 8) return text.includes(secret);
+  for (let i = 0; i + 8 <= secret.length; i++) if (text.includes(secret.slice(i, i + 8))) return true;
+  return false;
 }
 
 /**

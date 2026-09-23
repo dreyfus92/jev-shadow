@@ -217,7 +217,8 @@ Kept as candidate 1 had it, and flagged for the user: enforce yields to auto mod
 
 ## Implementation reconciliation
 
-*Empty until implementation starts.*
+- `package.json` `test` script: the sketch ran `node --test dist/test/`, which Node 20 expands as a directory and Node 21+ treats as a single file path (`Cannot find module .../dist/test`). Now `node --test dist/test/*.test.js`, shell-expanded, which both accept. The contract (`tsc -p .` then `node:test` over the compiled tests) is unchanged.
+- `test/egress.test.ts`: the design says the corpus's token straddle leaks under truncate-then-redact. That holds for the `ghp_` case only. The PEM straddle does not leak under either order, because `pem` redacts an unterminated block to the end of the text (`|$`), so a block cut before its END marker is still covered. The test asserts each case's real property instead of one claim over both.
 
 ## Open questions and risks
 
