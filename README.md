@@ -138,3 +138,7 @@ This is the output over `test/fixtures/log.sample.jsonl`, not real data. Rule-ta
 v0.1. No independent calibration data yet. No key is needed to try it with the mock backend. Tests run with `pnpm test` and never touch the network.
 
 Design: `docs/design/README.md`. Research: `docs/research/README.md`.
+
+## License
+
+MIT. See `LICENSE`.
