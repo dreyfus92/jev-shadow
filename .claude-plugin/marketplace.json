@@ -1,6 +1,9 @@
 {
   "name": "jev-shadow",
-  "owner": { "name": "Paul Valladares" },
+  "owner": {
+    "name": "Paul Valladares"
+  },
+  "description": "jev-shadow, a shadow-first Jev decision layer for Claude Code tool calls",
   "plugins": [
     {
       "name": "jev-shadow",
