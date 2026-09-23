@@ -8,7 +8,7 @@
 import type { Raw } from "./egress.js";
 import type { JevOutcome, Hazard, Probability } from "./jev.js";
 import type { JevState } from "./egress.js";
-import { toJevState, scriptRefs } from "./egress.js";
+import { toJevState, scriptRefs, fingerprint } from "./egress.js";
 import { triage, type RuleId, type Miss } from "./rules.js";
 
 // ------------------------------------------------------------------ identifiers
@@ -56,13 +56,9 @@ export type PermissionMode =
  * every branch that returns "gate" requires enforce. core.test.ts enumerates the table to pin it.
  */
 export function actingPosture(mode: Mode, event: HookEvent): Posture | "none" {
-  // TODO
-  // off                                  -> none
-  // event.kind !== "attempt"             -> observe   (denied / ran are labels, never gated)
-  // shadow                               -> observe
-  // enforce && permissionMode === "auto" -> observe
-  // enforce                              -> gate
-  throw new Error("not implemented");
+  if (mode === "off") return "none";
+  if (event.kind !== "attempt" || mode === "shadow") return "observe";
+  return event.ctx.permissionMode === "auto" ? "observe" : "gate";
 }
 
 // ------------------------------------------------------------------ events (parsed at the host boundary)
@@ -185,16 +181,19 @@ export const BLOCKING: ReadonlySet<Hazard> = new Set<Hazard>([
  * That is the point of shadow: the logged `effect` is exactly what enforce would have done.
  */
 export function decide(assessment: Assessment, policy: Policy): Decision {
-  // TODO
-  // routine                          -> allow, basis rule
-  // judged, jev failed               -> policy.onError, basis jev_failed
-  // judged, verdict:
-  //   ranked = hazards sorted by p desc
-  //   first BLOCKING hazard with p >= deny           -> deny
-  //   top p >= deny && risk >= askRisk               -> deny (top)
-  //   top p >= ask || risk >= askRisk                -> ask  (top)
-  //   else                                           -> allow, below_thresholds
-  throw new Error("not implemented");
+  if (assessment.kind === "routine") return { effect: "allow", basis: { kind: "rule", rule: assessment.rule } };
+  const { jev } = assessment;
+  if (jev.kind === "failed") return { effect: policy.onError, basis: { kind: "jev_failed", error: jev, onError: policy.onError } };
+  const { hazards, risk } = jev.verdict;
+  const { deny, ask, askRisk } = policy.thresholds;
+  const ranked = (Object.entries(hazards) as [Hazard, Probability][]).sort((a, b) => b[1] - a[1]);
+  const top = ranked[0] ?? ["destructive", 0 as Probability];
+  const blocking = ranked.find(([h, p]) => BLOCKING.has(h) && p >= deny);
+  const basisOf = ([hazard, p]: [Hazard, Probability]): Basis => ({ kind: "hazard", hazard, p, risk });
+  if (blocking) return { effect: "deny", basis: basisOf(blocking) };
+  if (top[1] >= deny && risk >= askRisk) return { effect: "deny", basis: basisOf(top) };
+  if (top[1] >= ask || risk >= askRisk) return { effect: "ask", basis: basisOf(top) };
+  return { effect: "allow", basis: { kind: "below_thresholds" } };
 }
 
 /** The effects `assess` needs. The deadline is already bound into `ask` by the shell. */
@@ -209,12 +208,9 @@ export interface AssessDeps {
  * failure into a `failed` outcome), so neither does this.
  */
 export async function assess(attempt: Attempt, deps: AssessDeps): Promise<Assessment> {
-  // TODO
-  // const t = triage(attempt.action, attempt.ctx)
-  // if (t.kind === "routine") return t
-  // const scripts = deps.readScripts(scriptRefs(attempt.action), attempt.ctx)
-  // const state = toJevState(attempt.action, attempt.ctx, scripts)   // redact-then-clip inside
-  // return { kind: "judged", miss: t.miss, jev: await deps.ask(state), fingerprint: fingerprint(state) }
-  void triage; void toJevState; void scriptRefs;
-  throw new Error("not implemented");
+  const t = triage(attempt.action, attempt.ctx);
+  if (t.kind === "routine") return t;
+  const scripts = deps.readScripts(scriptRefs(attempt.action), attempt.ctx);
+  const state = toJevState(attempt.action, attempt.ctx, scripts);
+  return { kind: "judged", miss: t.miss, jev: await deps.ask(state), fingerprint: fingerprint(state) };
 }
