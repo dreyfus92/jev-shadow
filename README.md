@@ -51,7 +51,7 @@ This writes `~/.config/jev-shadow/config.json` (or `$JEV_SHADOW_CONFIG`). The fi
 ## Modes
 
 - `off` sends nothing and logs nothing. It is the kill switch and takes effect on the next tool call in every running session.
-- `shadow` asks Jev from a background hook, logs the verdict next to the classifier's decision, and changes nothing. The synchronous hook still spawns a `node` process per matched call that exits before reading stdin. Measured on an M-series Mac: p50 50 ms per spawn, of which bare `node -e 0` is 39 ms, so the plugin's own cost is about 15 ms.
+- `shadow` asks Jev from a background hook, logs the verdict next to the classifier's decision, and changes nothing. The synchronous hook still spawns a `node` process per matched call that exits before reading stdin. Measured on an M-series Mac: p50 50 ms per spawn, of which bare `node -e 0` is 39 ms, so the plugin's own cost is about 11 ms.
 - `enforce` runs a synchronous gate that prints `ask` or `deny`, or nothing for allow. In an auto-mode session it behaves as `shadow`. `policy.onError` (default `allow`) decides what a failed Jev call becomes. In `dontAsk` mode and in `claude -p` without a permission prompt tool, `ask` is a hard deny. A hook that reaches its timeout always fails open, whatever `onError` says.
 
 `JEV_SHADOW_MODE` in the environment may lower the mode but never raise it. A missing or invalid config file means `off`.

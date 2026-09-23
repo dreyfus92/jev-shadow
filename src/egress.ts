@@ -8,12 +8,8 @@
  *   Redacted  only `redact` makes one. `clip` accepts and returns `Redacted`.
  *
  * So `clip(raw, n)` and `redact(raw.slice(0, n))` are both type errors. Truncating unredacted
- * text cannot be written without a cast, and an eslint `no-restricted-syntax` rule bans
- * `as Raw` / `as Redacted` outside this file. test/egress.types.ts pins both with
- * `@ts-expect-error`, so the invariant is checked by `tsc`, not by review.
- *
- * Why the order matters (jev-axi safety.ts:216,226): cutting a PEM block before redaction drops
- * its END marker, the block regex no longer matches, and the key body ships.
+ * text cannot be written without a cast, and test/minters.test.ts fails the build if `fromHost(` or an `as Raw` / `as Redacted` cast appears
+ * outside this file, the host adapters, and cli.ts's readScripts.
  */
 import { createHash } from "node:crypto";
 import type { Action, EventContext } from "./core.js";
