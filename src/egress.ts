@@ -7,9 +7,11 @@
  *             which is not `Raw`.
  *   Redacted  only `redact` makes one. `clip` accepts and returns `Redacted`.
  *
- * So `clip(raw, n)` and `redact(raw.slice(0, n))` are both type errors. Truncating unredacted
- * text cannot be written without a cast, and test/minters.test.ts fails the build if `fromHost(` or an `as Raw` / `as Redacted` cast appears
- * outside this file, the host adapters, and cli.ts's readScripts.
+ * So `clip(raw, n)` and `redact(raw.slice(0, n))` are both type errors. test/egress.types.ts pins
+ * both with `@ts-expect-error`, so the invariant is checked by `tsc`, not by review. Truncating
+ * unredacted text cannot be written without a cast, and test/minters.test.ts fails if `fromHost(`
+ * or an `as Raw` / `as Redacted` cast appears outside this file, the host adapters, and
+ * cli.ts's readScripts.
  */
 import { createHash } from "node:crypto";
 import type { Action, EventContext } from "./core.js";
