@@ -322,9 +322,19 @@ function triageSegment(segment: Segment, ctx: EventContext, table: ReadonlyMap<s
   if (!head) return { kind: "routine", rule: "shell.empty" };
   const argv0 = head.literal && head.text.startsWith("/") ? posix.basename(head.text) : head.text;
   const candidates = head.literal ? table.get(argv0) ?? [] : [];
-  if (candidates.length === 0) return { kind: "judge", miss: { kind: "unlisted", argv0 } };
+  if (candidates.length === 0) return { kind: "judge", miss: { kind: "unlisted", argv0: commandWord(argv0) } };
   for (const rule of candidates) if (passes(rule, rest, ctx)) return { kind: "routine", rule: rule.id };
   return { kind: "judge", miss: { kind: "refused", rule: candidates[0]?.id ?? "shell.empty" } };
+}
+
+/**
+ * The logged argv0 is a command word or a `NAME=` class, never the rest of the head token: a
+ * `TOKEN=ghp_...` or `fetch('...?key=...')` head would otherwise carry the secret into the log.
+ */
+function commandWord(head: string): string {
+  if (/^[\w.+-]+$/.test(head)) return head;
+  const assignment = /^([A-Za-z_]\w*)=/.exec(head);
+  return assignment?.[1] !== undefined ? `${assignment[1]}=` : "<non-word>";
 }
 
 function passes(rule: CommandRule, args: readonly Word[], ctx: EventContext): boolean {

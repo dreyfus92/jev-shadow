@@ -81,7 +81,7 @@ test("assess: routine never calls ask; judged sends a redacted state with in-pro
   const out = await assess(shell(`GH=${secret} ./deploy.sh`), deps);
   assert.equal(out.kind, "judged");
   if (out.kind !== "judged") return;
-  assert.deepEqual(out.miss, { kind: "unlisted", argv0: `GH=${secret}` });
+  assert.deepEqual(out.miss, { kind: "unlisted", argv0: "GH=" });
   assert.match(out.fingerprint, /^[0-9a-f]{64}$/);
   const sent = JSON.stringify(asked);
   assert.ok(!leaks(sent, secret), sent);
