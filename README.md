@@ -10,8 +10,8 @@ One tool call, three hook events, one log line each. The report joins them later
 
 ```mermaid
 flowchart TB
-    call["Claude wants to run a tool<br/>(Bash, Write, Edit, WebFetch, MCP)"]
-    call --> cc["Claude Code fires PreToolUse"]
+    want["Claude wants to run a tool<br/>(Bash, Write, Edit, WebFetch, MCP)"]
+    want --> cc["Claude Code fires PreToolUse"]
     cc --> gate["sync hook: gate<br/>exits at once unless mode is enforce"]
     cc --> obs["async hook: observer<br/>runs in the background, cannot print"]
     cc --> clf["auto-mode classifier<br/>(Anthropic, built in)"]
