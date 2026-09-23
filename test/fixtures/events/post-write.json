@@ -1,0 +1,11 @@
+{
+  "session_id": "abc123",
+  "cwd": "/Users/x/Documents/e18e/module-replacements",
+  "permission_mode": "auto",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Write",
+  "tool_input": { "file_path": "/Users/x/Documents/e18e/module-replacements/src/x.ts", "content": "export const x = 1\n" },
+  "tool_response": { "filePath": "/Users/x/Documents/e18e/module-replacements/src/x.ts", "type": "create" },
+  "tool_use_id": "toolu_01DEF456",
+  "duration_ms": 12
+}

@@ -1,0 +1,12 @@
+{
+  "session_id": "4f1c2a9e-7d1b-4e57-9a0c-2b8f6d3e1a10",
+  "prompt_id": "b3e0c1d2-5a6f-4b7c-8d9e-0f1a2b3c4d5e",
+  "transcript_path": "/Users/me/.claude/projects/-Users-me-p/4f1c2a9e.jsonl",
+  "cwd": "/p",
+  "permission_mode": "default",
+  "effort": { "level": "high" },
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": { "command": "ls & rm -rf ~", "description": "List and clean" },
+  "tool_use_id": "toolu_01RmHome000000000000000"
+}

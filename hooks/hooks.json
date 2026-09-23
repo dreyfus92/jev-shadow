@@ -1,0 +1,62 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|WebFetch|mcp__.*)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/jev-shadow", "hook", "observe", "--data", "${CLAUDE_PLUGIN_DATA}"],
+            "async": true
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/jev-shadow", "hook", "gate", "--data", "${CLAUDE_PLUGIN_DATA}"],
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PermissionDenied": [
+      {
+        "matcher": "^(Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|WebFetch|mcp__.*)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/jev-shadow", "hook", "observe", "--data", "${CLAUDE_PLUGIN_DATA}"],
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^(Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|WebFetch|mcp__.*)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/jev-shadow", "hook", "observe", "--data", "${CLAUDE_PLUGIN_DATA}"],
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "^(Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit|WebFetch|mcp__.*)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/bin/jev-shadow", "hook", "observe", "--data", "${CLAUDE_PLUGIN_DATA}"],
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

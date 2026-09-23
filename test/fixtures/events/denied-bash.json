@@ -1,0 +1,10 @@
+{
+  "session_id": "abc123",
+  "cwd": "/Users/x/Documents/e18e/module-replacements",
+  "permission_mode": "auto",
+  "hook_event_name": "PermissionDenied",
+  "tool_name": "Bash",
+  "tool_input": { "command": "ls & rm -rf ~" },
+  "tool_use_id": "toolu_01ABC123",
+  "reason": "[Irreversible Local Destruction]"
+}

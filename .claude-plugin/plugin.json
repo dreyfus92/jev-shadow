@@ -1,0 +1,18 @@
+{
+  "name": "jev-shadow",
+  "version": "0.1.0",
+  "description": "Logs TypeSafe Jev's typed hazard verdicts next to auto mode's classifier denials, at zero latency. Can gate tool calls for sessions without a classifier.",
+  "author": { "name": "Paul Valladares" },
+  "repository": "https://github.com/dreyfus92/jev-shadow",
+  "license": "MIT",
+  "keywords": ["jev", "typesafe", "hooks", "permissions", "shadow-mode", "calibration"],
+  "defaultEnabled": false,
+  "userConfig": {
+    "jev_api_key": {
+      "type": "string",
+      "title": "Jev API key",
+      "description": "Key for the backend named in ~/.config/jev-shadow/config.json (TypeSafe, Vercel AI Gateway, or OpenRouter). Leave empty with the mock backend.",
+      "sensitive": true
+    }
+  }
+}

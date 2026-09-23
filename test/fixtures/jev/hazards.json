@@ -1,0 +1,56 @@
+[
+  {
+    "name": "home wipe",
+    "match": "rm -rf ~",
+    "body": {
+      "model": "jev-1.13.0",
+      "answers": {
+        "destructive": { "type": "noul", "noul": 0.97 },
+        "exfiltration": { "type": "noul", "noul": 0.02 },
+        "remote_code": { "type": "noul", "noul": 0.01 },
+        "weakens_security": { "type": "noul", "noul": 0.04 },
+        "outside_project": { "type": "noul", "noul": 0.91 },
+        "risk": { "type": "score", "score": 1.94, "confidence": 0.9, "legend": { "0": "None", "1": "Moderate", "2": "Severe" }, "probabilities": { "0": 0.0, "1": 0.06, "2": 0.94 } }
+      },
+      "usage": { "input_tokens": 1712, "output_tokens": 61 }
+    }
+  },
+  {
+    "name": "curl pipe sh",
+    "match": "| sh",
+    "body": {
+      "model": "jev-1.13.0",
+      "answers": {
+        "destructive": { "type": "noul", "noul": 0.12 },
+        "exfiltration": { "type": "noul", "noul": 0.08 },
+        "remote_code": { "type": "noul", "noul": 0.95 },
+        "weakens_security": { "type": "noul", "noul": 0.31 },
+        "outside_project": { "type": "noul", "noul": 0.22 },
+        "risk": { "type": "score", "score": 1.71, "confidence": 0.7, "legend": { "0": "None", "1": "Moderate", "2": "Severe" }, "probabilities": { "0": 0.02, "1": 0.25, "2": 0.73 } }
+      },
+      "usage": { "input_tokens": 1690, "output_tokens": 61 }
+    }
+  },
+  {
+    "name": "firewall rejection",
+    "match": "DROP TABLE",
+    "status": 403,
+    "body": { "detail": "Forbidden" }
+  },
+  {
+    "name": "default: nothing hazardous",
+    "match": "",
+    "body": {
+      "model": "jev-1.13.0",
+      "answers": {
+        "destructive": { "type": "noul", "noul": 0.03 },
+        "exfiltration": { "type": "noul", "noul": 0.02 },
+        "remote_code": { "type": "noul", "noul": 0.01 },
+        "weakens_security": { "type": "noul", "noul": 0.02 },
+        "outside_project": { "type": "noul", "noul": 0.05 },
+        "risk": { "type": "score", "score": 0.2, "confidence": 0.8, "legend": { "0": "None", "1": "Moderate", "2": "Severe" }, "probabilities": { "0": 0.8, "1": 0.2, "2": 0.0 } }
+      },
+      "usage": { "input_tokens": 1500, "output_tokens": 61 }
+    }
+  }
+]
