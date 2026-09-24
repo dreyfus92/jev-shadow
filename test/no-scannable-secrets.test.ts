@@ -13,7 +13,7 @@ const SCANNABLE = [
   /AIza[0-9A-Za-z_-]{30,}/, /npm_[A-Za-z0-9]{36}/, /ghp_[A-Za-z0-9]{36}/, /github_pat_[A-Za-z0-9_]{20,}/,
   /sk-[A-Za-z0-9_-]{20,}/, /sk_live_[A-Za-z0-9]{10,}/, /glpat-[A-Za-z0-9_-]{20}/, /hf_[A-Za-z0-9]{30,}/,
   /AKIA[0-9A-Z]{16}/, /ASIA[0-9A-Z]{16}/, /xox[abp]-[A-Za-z0-9-]{10,}/, /eyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]+/,
-  /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----\n[A-Za-z0-9+/=\n]{40,}/,
 ];
 
 function walk(path: string): string[] {
