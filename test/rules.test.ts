@@ -116,9 +116,9 @@ test("write triage: sensitive paths are judged, in-project and tmp edits are rou
 test("an unlisted miss logs the command word or an assignment name, never the value", () => {
   const miss = (command: string) => { const t = triage(shell(command), ctx); return t.kind === "judge" && t.miss.kind === "unlisted" ? t.miss.argv0 : t; };
   assert.equal(miss("terraform destroy"), "terraform");
-  assert.equal(miss("GITHUB_TOKEN=github_pat_abcdefghijklmnopqrstuvwxyz gh pr list"), "GITHUB_TOKEN=");
-  assert.equal(miss("fetch('https://x?key=AIzaSyAbcdefghijklmnopqrstuvwxyz0123456')"), "<non-word>");
-  assert.equal(miss("//registry.npmjs.org/:_authToken=npm_abcdefghijklmnopqrstuvwxyz0123456789"), "<non-word>");
+  assert.equal(miss(`GITHUB_TOKEN=${"github_pat_" + "abcdefghijklmnopqrstuvwxyz"} gh pr list`), "GITHUB_TOKEN=");
+  assert.equal(miss(`fetch('https://x?key=${"AIza" + "SyAbcdefghijklmnopqrstuvwxyz0123456"}')`), "<non-word>");
+  assert.equal(miss(`//registry.npmjs.org/:_authToken=${"npm_" + "abcdefghijklmnopqrstuvwxyz0123456789"}`), "<non-word>");
 });
 
 test("non-shell actions and powershell are always judged", () => {

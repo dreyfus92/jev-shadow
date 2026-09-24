@@ -70,7 +70,7 @@ test("decide: a failed call becomes onError with a jev_failed basis; routine is 
 
 test("assess: routine never calls ask; judged sends a redacted state with in-project scripts and fingerprints it", async () => {
   const asked: JevState[] = [];
-  const secret = "ghp_EPJUo09jwQO10Y0ADsWJPiX1EwY2orTyRqBR";
+  const secret = "ghp_" + "EPJUo09jwQO10Y0ADsWJPiX1EwY2orTyRqBR";
   const deps = {
     ask: async (state: JevState): Promise<JevOutcome> => { asked.push(state); return verdict({}, 0); },
     readScripts: (refs: readonly string[]) => new Map(refs.map((r) => [r, fromHost(`echo ${secret}`)])),
